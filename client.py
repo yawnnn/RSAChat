@@ -4,22 +4,23 @@ from chat import Chat
 from rsa import *
 
 def encrypt_msg(conn, msg):
-	chiperText = encrypt(msg, server_keys[0], server_keys[1], 32)
+	chiperText = server_cert.encrypt(msg, 32)
 	return ';'.join(str(b) for b in chiperText)
 
 def decrypt_msg(conn, chiperText):
 	blocks = []
 	for block in chiperText.split(';'):
 		blocks.append(int(block))
-	msg = decrypt(blocks, cert[1], cert[2], 32)
+	msg = cert.decrypt(blocks, 32)
 	return msg
 
 def exchange_keys():
-	msg = '{0};{1}'.format(cert[0], cert[2])
+	msg = '%s;%s' % cert.getPubKey()
 	socket.send(bytes(msg, 'utf8'))
 	keys = socket.recv(BUFSIZ).decode('utf8')
 	pub, n = keys.split(';')
-	server_keys.extend([int(pub), int(n)])
+	global server_cert
+	server_cert = RSA(int(pub), int(n))
 
 def receive():
 	while True:
@@ -31,7 +32,7 @@ def receive():
 
 			else:
 				break
-		except OSError:  # Possibly client has left the chat.
+		except OSError:
 			break
 
 def send(event=None):
@@ -51,8 +52,8 @@ BUFSIZ = 1024
 
 socket = socket(AF_INET, SOCK_STREAM)
 chat = Chat()
-cert = genKeys()
-server_keys = []
+cert = RSA()
+server_cert = None
 
 if __name__ == "__main__":
 

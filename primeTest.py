@@ -53,4 +53,4 @@ if __name__ == "__main__":
 
 	n = random.randint(10**100, 10**101)
 
-	print(isPrime(n, 50))
+	print(n, isPrime(n, 50))

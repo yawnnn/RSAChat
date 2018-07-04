@@ -1,156 +1,180 @@
 import random
 import math
 import primeTest
-from hashlib import sha1
+from hashlib import sha256
 
-def hashMsg(msg):
-	msgHash = sha1(msg);
-	return msgHash.hexdigest()
+class RSA:
 
-def getRandom(start, end):
-		x = random.randint(start, end)
-		
-		if x % 2 == 0:
-			x += 1
-
-		return x
-
-def findPrime(start, end, tries):
-	x = getRandom(start, end)
-
-	while True:
-		if primeTest.isPrime(x, tries):
-			return x
+	def __init__(self, e=None, n=None):
+		if e:
+			self.e = e
+			self.n = n
 		else:
-			x = getRandom(start, end)
+			self.e, self.d, self.n = self.genKeys()
 
-def modularInverse(a, m):
-	# euclid extended algorithm, look it up to 
-	# understand what's going on here
-	# format (r, s, t)
-	seq = [(m, 1, 0), (a, 0, 1)]
+	def getPubKey(self):
+		return (self.e, self.n)
 
-	while True:
-		quotient = seq[-2][0] // seq[-1][0]
-		seq.append((seq[-2][0] - (quotient * seq[-1][0]),
-					seq[-2][1] - (quotient * seq[-1][1]),
-					seq[-2][2] - (quotient * seq[-1][2])))
+	def getRandom(self, start, end):
+			x = random.randint(start, end)
+			
+			if x % 2 == 0:
+				x += 1
 
-		if seq[-1][0] == 0:
-			del seq[-1]
-			break
+			return x
 
-	return seq[-1][2]
+	def findPrime(self, start, end, tries):
+		x = self.getRandom(start, end)
 
-def genKeys(start=10**100, end=10**104, tries=50):
+		while True:
+			if primeTest.isPrime(x, tries):
+				return x
+			else:
+				x = self.getRandom(start, end)
 
-	modifier = random.choice([0.01, 0.1])
+	def modularInverse(self, a, m):
+		# euclid extended algorithm, look it up to 
+		# understand what's going on here
+		# the format is [(r, s, t)]
+		seq = [(m, 1, 0), (a, 0, 1)]
 
-	p = findPrime(start, end, tries)
-	q = findPrime(start, end, tries)
+		while True:
+			quotient = seq[-2][0] // seq[-1][0]
+			seq.append((seq[-2][0] - (quotient * seq[-1][0]),
+						seq[-2][1] - (quotient * seq[-1][1]),
+						seq[-2][2] - (quotient * seq[-1][2])))
 
-	n = p * q
-	totientN = (p-1) * (q-1)
-	d = 0
+			if seq[-1][0] == 0:
+				del seq[-1]
+				break
 
-	while True:
-		d = findPrime(max(p, q), totientN, tries)
+		return seq[-1][2]
 
-		if math.gcd(d, totientN) == 1:
-			break
+	def genKeys(self, start=10**100, end=10**104, tries=50):
 
-	e = modularInverse(d, totientN)
+		modifier = random.choice([0.01, 0.1])
 
-	# returning e % totientN prevents e from being negative
-	# without corrupting the key
-	return (e % totientN, d, n)
+		p = self.findPrime(start, end, tries)
+		q = self.findPrime(start, end, tries)
 
-def string2asciiList(string):
-	asciiList = []
-	
-	for char in string:
-		asciiList.append(ord(char))
+		n = p * q
+		totientN = (p-1) * (q-1)
+		d = 0
 
-	return asciiList
+		while True:
+			d = self.findPrime(max(p, q), totientN, tries)
 
-def asciiList2string(asciiList):
-	string = ""
+			if math.gcd(d, totientN) == 1:
+				break
 
-	for asciiChar in asciiList:
-		string += chr(asciiChar)
+		e = self.modularInverse(d, totientN)
 
-	return string.replace('\x00', '')
+		# returning e % totientN prevents e from being negative
+		# without corrupting the key
+		return (e % totientN, d, n)
 
-def asciiList2intBlocks(asciiList, length):
-	blocks = []
+	def string2asciiList(self, string):
+		asciiList = []
+		
+		for char in string:
+			asciiList.append(ord(char))
 
-	if len(asciiList) % length != 0:
-		for i in range(length - len(asciiList) % length):
-			asciiList.append(0)
+		return asciiList
 
-	for i in range(0, len(asciiList), length):
-		integer = 0b0
+	def asciiList2string(self, asciiList):
+		string = ""
 
-		for j in range(length):
-			integer += asciiList[i + j] * pow(256, length - j - 1)
+		for asciiChar in asciiList:
+			string += chr(asciiChar)
 
-		blocks.append(integer)
+		return string.replace('\x00', '')
 
-	return blocks
+	def asciiList2intBlocks(self, asciiList, length):
+		blocks = []
 
-def intBlocks2asciiList(blocks, length):
-    asciiList = []
+		if len(asciiList) % length != 0:
+			for i in range(length - len(asciiList) % length):
+				asciiList.append(0)
 
-    for integer in blocks:
-        inner = []
+		for i in range(0, len(asciiList), length):
+			integer = 0b0
 
-        for i in range(length):
-            inner.append(integer % 256)
-            integer >>= 8
+			for j in range(length):
+				integer += asciiList[i + j] * pow(256, length - j - 1)
 
-        inner.reverse()
-        asciiList.extend(inner)
+			blocks.append(integer)
 
-    return asciiList
+		return blocks
 
-def encrypt(message, e, n, blockSize):
-	chiperText = []
+	def intBlocks2asciiList(self, blocks, length):
+	    asciiList = []
 
-	asciiMessage = string2asciiList(message)
-	messageBlocks = asciiList2intBlocks(asciiMessage, blockSize)
+	    for integer in blocks:
+	        inner = []
 
-	for block in messageBlocks:
-		chiperText.append(pow(block, e, n))
+	        for i in range(length):
+	            inner.append(integer % 256)
+	            integer >>= 8
 
-	return chiperText
+	        inner.reverse()
+	        asciiList.extend(inner)
 
-def decrypt(chiperText, d, n, blockSize):
-	messageBlocks = []
+	    return asciiList
 
-	for block in chiperText:
-		messageBlocks.append(pow(block, d, n))
+	# hash is always long 64 hex characters
+	def signMsg(self, msg, blockSize=64):
+		msgHash = sha256(msg);
+		return msgHash.hexdigest()
 
-	asciiMessage = intBlocks2asciiList(messageBlocks, blockSize)
-	message = asciiList2string(asciiMessage)
+	def encrypt(self, msg, blockSize):
+		chiperText = []
 
-	return message
+		asciiMsg = self.string2asciiList(msg)
+		msgBlocks = self.asciiList2intBlocks(asciiMsg, blockSize)
+
+		for block in msgBlocks:
+			chiperText.append(pow(block, self.e, self.n))
+
+		return chiperText
+
+	def decrypt(self, chiperText, blockSize):
+		msgBlocks = []
+
+		for block in chiperText:
+			msgBlocks.append(pow(block, self.d, self.n))
+
+		asciiMsg = self.intBlocks2asciiList(msgBlocks, blockSize)
+		msg = self.asciiList2string(asciiMsg)
+
+		return msg
+
+	# def encryptMsg(self, msg, blockSize):
+
+
+	# def decryptMsg(self, chiperText, blockSize):
+
+
 
 if __name__ == "__main__":
+
+	msg = 'hello baby'
+	sha = sha256(bytes(msg, 'utf8'))
+	print(sha.hexdigest())
 	
-	message = "questo e' un messaggio di test"
+	# message = "this is a test message"
 
-	e, d, n = genKeys()
-	print('e = ', e, '\n')
-	print('d = ', d, '\n')
-	print('n = ', n, '\n')
+	# cert = RSA()
+	# print('e = ', cert.e, '\n')
+	# print('d = ', cert.d, '\n')
+	# print('n = ', cert.n, '\n')
 
 
-	chiperText = encrypt(message, e, n, 32)
-	endMessage = decrypt(chiperText, d, n, 32)
+	# chiperText = cert.encrypt(message, 32)
+	# endMessage = cert.decrypt(chiperText, 32)
 
-	print('messaggio originale: ', message, '\n')
-	print('messaggio cifrato: ', chiperText, '\n')
-	print('messaggio che legge infine il destinatario:', endMessage)
+	# print('original msg: ', message, '\n')
+	# print('chipertext: ', chiperText, '\n')
+	# print('decrypted msg:', endMessage)
 	
 
 
