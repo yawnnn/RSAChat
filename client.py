@@ -4,15 +4,20 @@ from chat import Chat
 from rsa import *
 
 def encrypt_msg(conn, msg):
-	chiperText = server_cert.encrypt(msg, 32)
-	return ';'.join(str(b) for b in chiperText)
+	chiperText = server_cert.encryptMsg(msg, BLOCKSIZE)
+	signature = cert.signMsg(msg)
 
-def decrypt_msg(conn, chiperText):
-	blocks = []
-	for block in chiperText.split(';'):
-		blocks.append(int(block))
-	msg = cert.decrypt(blocks, 32)
-	return msg
+	return chiperText + chr(0) + signature
+
+def decrypt_msg(conn, signedText):
+	chiperText, signature = signedText.split(chr(0))
+	msg = cert.decryptMsg(chiperText, BLOCKSIZE)
+	msgHash = server_cert.unsignMsg(signature)
+
+	if msgHash == sha256(bytes(msg, 'utf8')).hexdigest():
+		return msg
+	else:
+		raise ValueError("signature doesn't match")
 
 def exchange_keys():
 	msg = '%s;%s' % cert.getPubKey()
@@ -25,8 +30,8 @@ def exchange_keys():
 def receive():
 	while True:
 		try:
-			chiperText = socket.recv(BUFSIZ).decode('utf8')
-			msg = decrypt_msg(socket, chiperText)
+			signedText = socket.recv(BUFSIZ).decode('utf8')
+			msg = decrypt_msg(socket, signedText)
 			if msg != '':
 				chat.showMessage(msg)
 
@@ -37,8 +42,8 @@ def receive():
 
 def send(event=None):
 	msg = chat.getMessage()
-	chiperText = encrypt_msg(socket, msg)
-	socket.send(bytes(chiperText, 'utf8'))
+	signedText = encrypt_msg(socket, msg)
+	socket.send(bytes(signedText, 'utf8'))
 
 	if msg == 'q':
 		chat.close()
@@ -49,6 +54,7 @@ def on_close():
 ADDR = 'localhost'
 PORT = 33000
 BUFSIZ = 1024
+BLOCKSIZE = 16
 
 socket = socket(AF_INET, SOCK_STREAM)
 chat = Chat()

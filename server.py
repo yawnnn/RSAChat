@@ -1,5 +1,6 @@
 from socket import socket, AF_INET, SOCK_STREAM
 from threading import Thread
+from hashlib import sha256
 from rsa import RSA
 
 def exchange_keys(conn):
@@ -9,19 +10,21 @@ def exchange_keys(conn):
 	msg = '%s;%s' % cert.getPubKey()
 	conn.send(bytes(msg, 'utf8'))
 
-# These two functions just handle format problems
-# found it was better to be handled here rather than
-# in the RSA class itself
 def encrypt_msg(conn, msg):
-	chiperText = hosts_keys[conn].encrypt(msg, 32)
-	return ';'.join(str(b) for b in chiperText)
+	chiperText = hosts_keys[conn].encryptMsg(msg, BLOCKSIZE)
+	signature = cert.signMsg(msg)
 
-def decrypt_msg(conn, chiperText):
-	blocks = []
-	for block in chiperText.split(';'):
-		blocks.append(int(block))
-	msg = cert.decrypt(blocks, 32)
-	return msg
+	return chiperText + chr(0) + signature
+
+def decrypt_msg(conn, signedText):
+	chiperText, signature = signedText.split(chr(0))
+	msg = cert.decryptMsg(chiperText, BLOCKSIZE)
+	msgHash = hosts_keys[conn].unsignMsg(signature)
+
+	if msgHash == sha256(bytes(msg, 'utf8')).hexdigest():
+		return msg
+	else:
+		raise ValueError("signature doesn't match")
 
 def accept_connections(socket):
 
@@ -36,8 +39,8 @@ def accept_connections(socket):
 		Thread(target=handle_client, args=(conn,)).start()
 
 def handle_client(conn):
-	chiperText = conn.recv(BUFSIZ).decode('utf8')
-	name = decrypt_msg(conn, chiperText)
+	signedText = conn.recv(BUFSIZ).decode('utf8')
+	name = decrypt_msg(conn, signedText)
 
 	if name == 'q' or name == '':
 		del clients[conn]
@@ -48,8 +51,8 @@ def handle_client(conn):
 
 	try:
 		while True:
-			chiperText = conn.recv(BUFSIZ).decode('utf8')
-			msg = decrypt_msg(conn, chiperText)
+			signedText = conn.recv(BUFSIZ).decode('utf8')
+			msg = decrypt_msg(conn, signedText)
 
 			if msg != 'q' and msg != '':
 				broadcast('{0}: {1}'.format(name, msg))
@@ -63,16 +66,16 @@ def handle_client(conn):
 		socket.close()
 
 def send(conn, msg):
-	chiperText = encrypt_msg(conn, msg)
-	conn.send(bytes(chiperText, 'utf8'))
+	signedText = encrypt_msg(conn, msg)
+	conn.send(bytes(signedText, 'utf8'))
 
 def broadcast(msg):
 	crashed = []
 
 	for client in clients:
 		try:
-			chiperText = encrypt_msg(client, msg)
-			client.send(bytes(chiperText, 'utf8'))
+			signedText = encrypt_msg(client, msg)
+			client.send(bytes(signedText, 'utf8'))
 		except BrokenPipeError:
 			crashed.append(client)
 
@@ -85,6 +88,7 @@ def broadcast(msg):
 ADDR = 'localhost'
 PORT = 33000
 BUFSIZ = 1024
+BLOCKSIZE = 16
 
 clients = {}
 names = {}

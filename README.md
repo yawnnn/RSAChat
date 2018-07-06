@@ -1,2 +1,2 @@
 # RSA Chat  
-a simple python chat that implements RSA
+a simple python chat that uses RSA

@@ -144,7 +144,8 @@ class RSA:
 		for substring in chunks:
 			intBlocks.append(string2int(substring))
 
-		intBlocks[-1] <<= 8 * (blockSize - (len(string) % blockSize))
+		if not len(string) & blockSize:
+			intBlocks[-1] <<= 8 * (blockSize - (len(string) % blockSize))
 
 		return intBlocks
 
@@ -197,38 +198,56 @@ class RSA:
 
 	# hash is always long 64 hex characters
 	def signMsg(self, msg):
-		msgHash = sha256(msg).hexdigest();
+		msgHash = sha256(bytes(msg, 'utf8')).hexdigest();
 		signature = self.encrypt(msgHash, self.priv, 64)
 
-		return signature
+		return self.concat(signature)
+
+	def unsignMsg(self, signature):
+		msgHash = self.decrypt([int(signature)], self.pub, 64)
+
+		return msgHash
 
 	def encryptMsg(self, msg, blockSize):
 		chiperText = self.encrypt(msg, self.pub, blockSize)
-		# chiperText = ';'.join(str(b) for b in chiperText)
 		
-		return chiperText
+		return self.concat(chiperText)
 
 	def decryptMsg(self, chiperText, blockSize):
-		msg = self.decrypt(chiperText, self.priv, blockSize)
+		msg = self.decrypt(self.deconcat(chiperText), self.priv, blockSize)
 
 		return msg
+
+	def concat(self, intBlocks):
+		return ';'.join(str(b) for b in intBlocks)
+
+	def deconcat(self, string):
+		blocks = []
+
+		for block in string.split(';'):
+			blocks.append(int(block))
+
+		return blocks
 
 if __name__ == "__main__":
 	
 	message = "this is a test message"
+	blockSize = 8
 
 	cert = RSA()
-	print('e = ', cert.pub, '\n')
-	print('d = ', cert.priv, '\n')
-	print('n = ', cert.n, '\n')
 
+	# sender
+	chiperText = cert.encryptMsg(message, blockSize)
+	signature = cert.signMsg(message)
+	signedText = chiperText + chr(0) + signature
 
-	chiperText = cert.encryptMsg(message, 32)
-	endMessage = cert.decryptMsg(chiperText, 32)
+	#receiver
+	ct, sig = signedText.split(chr(0))
+	endMessage = cert.decryptMsg(ct, blockSize)
+	msgHash = cert.unsignMsg(sig)
 
-	print('original msg: ', message, '\n')
-	print('chiperText: ', chiperText, '\n')
-	print('decrypted msg:', endMessage)
+	if sha256(bytes(endMessage, 'utf8')).hexdigest() == msgHash:
+		print('Signature confirmed')
+
+	print('Received message: %s' % endMessage)
 	
-
-
