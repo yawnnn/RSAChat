@@ -5,15 +5,15 @@ from hashlib import sha256
 
 class RSA:
 
-	def __init__(self, e=None, n=None):
-		if e:
-			self.e = e
+	def __init__(self, pub=None, n=None):
+		if pub:
+			self.pub = pub
 			self.n = n
 		else:
-			self.e, self.d, self.n = self.genKeys()
+			self.pub, self.priv, self.n = self.genKeys()
 
 	def getPubKey(self):
-		return (self.e, self.n)
+		return (self.pub, self.n)
 
 	def getRandom(self, start, end):
 			x = random.randint(start, end)
@@ -121,60 +121,114 @@ class RSA:
 
 	    return asciiList
 
-	# hash is always long 64 hex characters
-	def signMsg(self, msg, blockSize=64):
-		msgHash = sha256(msg);
-		return msgHash.hexdigest()
+	def string2intBlocks(self, string, blockSize):
+		# returns the integer representation of the string
+		# in blocks of blockSize bytes
 
-	def encrypt(self, msg, blockSize):
+		intBlocks = []
+
+		def string2int(string):
+			# string will be tranformed in the concatenation
+			# of the ascii value of every letter in binary
+
+			integer = 0
+
+			for char in string:
+				integer = (integer << 8) + ord(char)
+
+			return integer
+
+		# divide the string in chunks of 8 characterss
+		chunks = [string[i:i+blockSize] for i in range(0, len(string), blockSize)]
+
+		for substring in chunks:
+			intBlocks.append(string2int(substring))
+
+		intBlocks[-1] <<= 8 * (blockSize - (len(string) % blockSize))
+
+		return intBlocks
+
+	def intBlocks2string(self, intBlocks, blockSize):
+		# converts a list of integers into a string
+		# every 8 bits is a letter
+
+		string = ''
+
+		def int2asciiList(integer):
+			# splits int in ascii values of every letter
+
+			asciiList = []
+
+			for i in range(blockSize):
+				asciiList.append(integer & 255)
+				integer >>= 8
+
+			asciiList.reverse()
+			
+			return asciiList
+
+		for block in intBlocks:
+			asciiList = int2asciiList(block)
+
+			for charValue in asciiList:
+				string += chr(charValue)
+
+		return string.replace('\x00', '')
+
+	def encrypt(self, msg, key, blockSize):
 		chiperText = []
 
-		asciiMsg = self.string2asciiList(msg)
-		msgBlocks = self.asciiList2intBlocks(asciiMsg, blockSize)
+		msgBlocks = self.string2intBlocks(msg, blockSize)
 
 		for block in msgBlocks:
-			chiperText.append(pow(block, self.e, self.n))
+			chiperText.append(pow(block, key, self.n))
 
 		return chiperText
 
-	def decrypt(self, chiperText, blockSize):
+	def decrypt(self, chiperText, key, blockSize):
 		msgBlocks = []
 
 		for block in chiperText:
-			msgBlocks.append(pow(block, self.d, self.n))
+			msgBlocks.append(pow(block, key, self.n))
 
-		asciiMsg = self.intBlocks2asciiList(msgBlocks, blockSize)
-		msg = self.asciiList2string(asciiMsg)
+		msg = self.intBlocks2string(msgBlocks, blockSize)
 
 		return msg
 
-	# def encryptMsg(self, msg, blockSize):
+	# hash is always long 64 hex characters
+	def signMsg(self, msg):
+		msgHash = sha256(msg).hexdigest();
+		signature = self.encrypt(msgHash, self.priv, 64)
 
+		return signature
 
-	# def decryptMsg(self, chiperText, blockSize):
+	def encryptMsg(self, msg, blockSize):
+		chiperText = self.encrypt(msg, self.pub, blockSize)
+		# chiperText = ';'.join(str(b) for b in chiperText)
+		
+		return chiperText
 
+	def decryptMsg(self, chiperText, blockSize):
+		msg = self.decrypt(chiperText, self.priv, blockSize)
 
+		return msg
 
 if __name__ == "__main__":
-
-	msg = 'hello baby'
-	sha = sha256(bytes(msg, 'utf8'))
-	print(sha.hexdigest())
 	
-	# message = "this is a test message"
+	message = "this is a test message"
 
-	# cert = RSA()
-	# print('e = ', cert.e, '\n')
-	# print('d = ', cert.d, '\n')
-	# print('n = ', cert.n, '\n')
+	cert = RSA()
+	print('e = ', cert.pub, '\n')
+	print('d = ', cert.priv, '\n')
+	print('n = ', cert.n, '\n')
 
 
-	# chiperText = cert.encrypt(message, 32)
-	# endMessage = cert.decrypt(chiperText, 32)
+	chiperText = cert.encryptMsg(message, 32)
+	endMessage = cert.decryptMsg(chiperText, 32)
 
-	# print('original msg: ', message, '\n')
-	# print('chipertext: ', chiperText, '\n')
-	# print('decrypted msg:', endMessage)
+	print('original msg: ', message, '\n')
+	print('chiperText: ', chiperText, '\n')
+	print('decrypted msg:', endMessage)
 	
 
 
