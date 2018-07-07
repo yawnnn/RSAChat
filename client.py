@@ -20,6 +20,9 @@ def decrypt_msg(conn, signedText):
 		raise ValueError("signature doesn't match")
 
 def exchange_keys():
+	# at the beginning of the communication each other's
+	# public key and n get sent to the other
+
 	msg = '%s;%s' % cert.getPubKey()
 	socket.send(bytes(msg, 'utf8'))
 	keys = socket.recv(BUFSIZ).decode('utf8')
@@ -28,6 +31,9 @@ def exchange_keys():
 	server_cert = RSA(int(pub), int(n))
 
 def receive():
+	# you need a separate thread for receive and send 
+	# since recv is blocking
+	
 	while True:
 		try:
 			signedText = socket.recv(BUFSIZ).decode('utf8')

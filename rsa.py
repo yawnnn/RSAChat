@@ -51,6 +51,7 @@ class RSA:
 		return seq[-1][2]
 
 	def genKeys(self, start=10**100, end=10**104, tries=50):
+		# returns pub, priv and n
 
 		modifier = random.choice([0.01, 0.1])
 
@@ -72,54 +73,6 @@ class RSA:
 		# returning e % totientN prevents e from being negative
 		# without corrupting the key
 		return (e % totientN, d, n)
-
-	def string2asciiList(self, string):
-		asciiList = []
-		
-		for char in string:
-			asciiList.append(ord(char))
-
-		return asciiList
-
-	def asciiList2string(self, asciiList):
-		string = ""
-
-		for asciiChar in asciiList:
-			string += chr(asciiChar)
-
-		return string.replace('\x00', '')
-
-	def asciiList2intBlocks(self, asciiList, length):
-		blocks = []
-
-		if len(asciiList) % length != 0:
-			for i in range(length - len(asciiList) % length):
-				asciiList.append(0)
-
-		for i in range(0, len(asciiList), length):
-			integer = 0b0
-
-			for j in range(length):
-				integer += asciiList[i + j] * pow(256, length - j - 1)
-
-			blocks.append(integer)
-
-		return blocks
-
-	def intBlocks2asciiList(self, blocks, length):
-	    asciiList = []
-
-	    for integer in blocks:
-	        inner = []
-
-	        for i in range(length):
-	            inner.append(integer % 256)
-	            integer >>= 8
-
-	        inner.reverse()
-	        asciiList.extend(inner)
-
-	    return asciiList
 
 	def string2intBlocks(self, string, blockSize):
 		# returns the integer representation of the string
@@ -150,13 +103,14 @@ class RSA:
 		return intBlocks
 
 	def intBlocks2string(self, intBlocks, blockSize):
-		# converts a list of integers into a string
-		# every 8 bits is a letter
+		# converts a list of integers into a string.
+		# every byte is a letter
 
 		string = ''
 
 		def int2asciiList(integer):
-			# splits int in ascii values of every letter
+			# splits int into 8 bits blocks, that are the ascii
+			# values of the letters
 
 			asciiList = []
 
@@ -181,6 +135,7 @@ class RSA:
 
 		msgBlocks = self.string2intBlocks(msg, blockSize)
 
+		# this is the actual encryption
 		for block in msgBlocks:
 			chiperText.append(pow(block, key, self.n))
 
@@ -189,6 +144,7 @@ class RSA:
 	def decrypt(self, chiperText, key, blockSize):
 		msgBlocks = []
 
+		# this is the actual encryption
 		for block in chiperText:
 			msgBlocks.append(pow(block, key, self.n))
 
@@ -218,9 +174,11 @@ class RSA:
 
 		return msg
 
+	# concatenate the blocks with a ;
 	def concat(self, intBlocks):
 		return ';'.join(str(b) for b in intBlocks)
 
+	# opposite of concat
 	def deconcat(self, string):
 		blocks = []
 

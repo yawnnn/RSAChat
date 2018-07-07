@@ -1,5 +1,6 @@
 import tkinter as tk
 
+# doesn't do much, it's just to divide GUI from program's logic 
 class Chat:
 
 	on_close_callback = None

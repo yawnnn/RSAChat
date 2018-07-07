@@ -4,6 +4,9 @@ from hashlib import sha256
 from rsa import RSA
 
 def exchange_keys(conn):
+	# at the beginning of the communication each other's
+	# public key and n get sent to the other
+
 	keys = conn.recv(BUFSIZ).decode('utf8')
 	pub, n = keys.split(';')
 	hosts_keys[conn] = RSA(int(pub), int(n))
@@ -27,7 +30,6 @@ def decrypt_msg(conn, signedText):
 		raise ValueError("signature doesn't match")
 
 def accept_connections(socket):
-
 	while True:
 		conn, addr = socket.accept()
 		clients[conn] = addr
@@ -39,6 +41,8 @@ def accept_connections(socket):
 		Thread(target=handle_client, args=(conn,)).start()
 
 def handle_client(conn):
+	# there is one thread running this loop for each client connected
+
 	signedText = conn.recv(BUFSIZ).decode('utf8')
 	name = decrypt_msg(conn, signedText)
 
@@ -62,7 +66,7 @@ def handle_client(conn):
 				conn.close()
 				break
 	except:
-		# Exceptions from here won't be catched in main's try
+		# Exceptions from here won't be catched in main's try-catch
 		socket.close()
 
 def send(conn, msg):
@@ -70,6 +74,8 @@ def send(conn, msg):
 	conn.send(bytes(signedText, 'utf8'))
 
 def broadcast(msg):
+	# every message will be sent to everyone in the chat
+
 	crashed = []
 
 	for client in clients:
@@ -90,7 +96,9 @@ PORT = 33000
 BUFSIZ = 1024
 BLOCKSIZE = 16
 
+# mapping socket and address
 clients = {}
+# mapping socket and chat name
 names = {}
 hosts_keys = {}
 cert = RSA()
@@ -108,7 +116,8 @@ if __name__ == "__main__":
 		accept_thread.start()
 		accept_thread.join()
 	except:
-		# Only needed to close the socket no matter what,
+		# you should catch specific errors but this is
+		# only needed to close the socket no matter what,
 		# since otherwise you won't be able to open another one 
 		# once you restart the program
 		socket.close()
