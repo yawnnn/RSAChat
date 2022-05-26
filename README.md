@@ -1,6 +1,5 @@
 # RSA Chat  
-a simple python chat that uses my implementation of RSA  
-i wouldn't use it for real applications
+a simple python chat that uses my *simple* implementation of RSA  
 
 ## Todo
 * Add OAEP
