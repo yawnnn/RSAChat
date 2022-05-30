@@ -1,8 +1,6 @@
 import tkinter as tk
 
-# doesn't do much, it's just to divide GUI from program's logic 
 class Chat:
-
 	on_close_callback = None
 
 	#self.chat.configure(background='#424242')
@@ -47,6 +45,5 @@ class Chat:
 		return msg
 
 if __name__ == "__main__":
-
 	chat = Chat()
 	chat.start(lambda: True, lambda: True)

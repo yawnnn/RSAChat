@@ -103,24 +103,13 @@ names = {}
 hosts_keys = {}
 cert = RSA()
 
-socket = socket(AF_INET, SOCK_STREAM)
-
 if __name__ == "__main__":
+	with socket(AF_INET, SOCK_STREAM) as s:
+		socket.bind((ADDR, PORT))
+		socket.listen(5)
 
-	socket.bind((ADDR, PORT))
-	socket.listen(5)
-
-	try:
 		print("Waiting for connection...")
 		accept_thread = Thread(target=accept_connections, args=(socket,))
 		accept_thread.start()
 		accept_thread.join()
-	except:
-		# you should catch specific errors but this is
-		# only needed to close the socket no matter what,
-		# since otherwise you won't be able to open another one 
-		# once you restart the program
-		socket.close()
-
-	socket.close()
 

@@ -1,6 +1,7 @@
 import random
 import math
 import primeTest
+import modularPow
 from hashlib import sha256
 
 class RSA:
@@ -137,7 +138,7 @@ class RSA:
 
 		# this is the actual encryption
 		for block in msgBlocks:
-			chiperText.append(pow(block, key, self.n))
+			chiperText.append(modularPow.modular_pow(block, key, self.n))
 
 		return chiperText
 
@@ -146,7 +147,7 @@ class RSA:
 
 		# this is the actual encryption
 		for block in chiperText:
-			msgBlocks.append(pow(block, key, self.n))
+			msgBlocks.append(modularPow.modular_pow(block, key, self.n))
 
 		msg = self.intBlocks2string(msgBlocks, blockSize)
 
@@ -188,7 +189,6 @@ class RSA:
 		return blocks
 
 if __name__ == "__main__":
-	
 	message = "this is a test message"
 	blockSize = 8
 

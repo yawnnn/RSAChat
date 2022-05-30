@@ -1,4 +1,5 @@
 import random
+import modularPow
 
 def refactor(m):
 	# returns (s, d) such that m = (2 ** s) * d
@@ -15,12 +16,10 @@ def refactor(m):
 
 	return (i, m >> i)
 
-
-
 def isPrime(n, tries):
-	#millerRabin primality test
-	#time complexity of O(k * log^3 n)
-	#the chance that the algorithm fails is of 4 ** tries
+	# millerRabin primality test
+	# time complexity of O(k * log^3 n)
+	# the chance that the algorithm fails is of 4 ** tries
 
 	s, d = refactor(n - 1)
 
@@ -28,13 +27,13 @@ def isPrime(n, tries):
 	assert 2 ** s * d == n - 1
 
 	def isComposite(a):
-		x = pow(a, d, n)
+		x = modularPow.modular_pow(a, d, n)
 
 		if x == 1 or x == n - 1:
 			return True
 
 		for _ in range(1, s - 1):
-			x = pow(x, 2, n)
+			x = modularPow.modular_pow(x, 2, n)
 
 			if x == 1:
 				return False
@@ -50,7 +49,6 @@ def isPrime(n, tries):
 	return True
 
 if __name__ == "__main__":
-
 	n = random.randint(10**100, 10**101)
 
 	print(n, isPrime(n, 50))

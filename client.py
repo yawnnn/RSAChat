@@ -68,7 +68,6 @@ cert = RSA()
 server_cert = None
 
 if __name__ == "__main__":
-
 	socket.connect((ADDR, PORT))
 	exchange_keys()
 	recv_thread = Thread(target=receive)
