@@ -1,3 +1,5 @@
+# Didn't make sense to put it anywhere else
+
 def modular_pow(base, exp, mod):
 	# Right-to-left binary method 
 	# we use the binary form of exp => exp = sum(a_i * 2^i)

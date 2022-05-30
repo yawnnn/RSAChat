@@ -1,5 +1,5 @@
-from socket import socket, AF_INET, SOCK_STREAM
-from threading import Thread
+import threading
+from socket import socket as _socket, AF_INET, SOCK_STREAM
 from chat import Chat
 from rsa import *
 
@@ -51,10 +51,8 @@ def send(event=None):
 	signedText = encrypt_msg(socket, msg)
 	socket.send(bytes(signedText, 'utf8'))
 
-	if msg == 'q':
-		chat.close()
-
 def on_close():
+	socket.send(bytes('q', 'utf8'))
 	socket.close()
 
 ADDR = 'localhost'
@@ -62,16 +60,20 @@ PORT = 33000
 BUFSIZ = 1024
 BLOCKSIZE = 16
 
-socket = socket(AF_INET, SOCK_STREAM)
-chat = Chat()
-cert = RSA()
+socket = None
+cert = None
+chat = None
 server_cert = None
 
 if __name__ == "__main__":
-	socket.connect((ADDR, PORT))
-	exchange_keys()
-	recv_thread = Thread(target=receive)
-	recv_thread.start()
-	chat.start(send, on_close)
+	chat = Chat()
+	cert = RSA()
+
+	with _socket(AF_INET, SOCK_STREAM) as socket:
+		socket.connect((ADDR, PORT))
+		exchange_keys()
+		recv_thread = threading.Thread(target=receive)
+		recv_thread.start()
+		chat.start(send, on_close)
 
 

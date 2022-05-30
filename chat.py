@@ -7,6 +7,7 @@ class Chat:
 
 	def __init__(self):
 		self.chat = tk.Tk()
+		self.chat.title("RSAChat")
 		self.msgFrame = tk.Frame(self.chat)
 		self.scrollbar = tk.Scrollbar(self.msgFrame)
 		self.msg = tk.StringVar()

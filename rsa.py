@@ -11,6 +11,7 @@ class RSA:
 			self.pub = pub
 			self.n = n
 		else:
+			print("Generating keys...")
 			self.pub, self.priv, self.n = self.genKeys()
 
 	def getPubKey(self):

@@ -1,5 +1,6 @@
-from socket import socket, AF_INET, SOCK_STREAM
-from threading import Thread
+import threading
+from time import sleep
+from socket import socket as _socket, AF_INET, SOCK_STREAM
 from hashlib import sha256
 from rsa import RSA
 
@@ -30,7 +31,7 @@ def decrypt_msg(conn, signedText):
 		raise ValueError("signature doesn't match")
 
 def accept_connections(socket):
-	while True:
+	while not stop.is_set():
 		conn, addr = socket.accept()
 		clients[conn] = addr
 
@@ -38,36 +39,33 @@ def accept_connections(socket):
 		print('%s:%s has connected.' % (addr[0], addr[1]))
 		send(conn, 'Enter your name')
 
-		Thread(target=handle_client, args=(conn,)).start()
+		threading.Thread(target=handle_client, args=(conn,addr,)).start()
 
-def handle_client(conn):
+def handle_client(conn, addr):
 	# there is one thread running this loop for each client connected
 
 	signedText = conn.recv(BUFSIZ).decode('utf8')
-	name = decrypt_msg(conn, signedText)
-
-	if name == 'q' or name == '':
+	if signedText == 'q':
 		del clients[conn]
 		conn.close()
+		print('%s:%s disconnected.' % (addr[0], addr[1]))
 		return
+
+	name = decrypt_msg(conn, signedText)
 	broadcast('{0} joined the chat'.format(name))
 	names[conn] = name
 
-	try:
-		while True:
-			signedText = conn.recv(BUFSIZ).decode('utf8')
-			msg = decrypt_msg(conn, signedText)
+	while not stop.is_set():
+		signedText = conn.recv(BUFSIZ).decode('utf8')
+		if signedText == 'q':
+			del clients[conn]
+			broadcast('{0} left the chat'.format(name))
+			print('%s:%s disconnected.' % (addr[0], addr[1]))
+			conn.close()
+			return
 
-			if msg != 'q' and msg != '':
-				broadcast('{0}: {1}'.format(name, msg))
-			else:
-				del clients[conn]
-				broadcast('{0} left the chat'.format(name))
-				conn.close()
-				break
-	except:
-		# Exceptions from here won't be catched in main's try-catch
-		socket.close()
+		msg = decrypt_msg(conn, signedText)
+		broadcast('{0}: {1}'.format(name, msg))
 
 def send(conn, msg):
 	signedText = encrypt_msg(conn, msg)
@@ -91,6 +89,10 @@ def broadcast(msg):
 	for client in crashed:
 		broadcast('%s left the chat' % names[client])
 
+def close_handler(signal, frame):
+	socket.close()
+	exit(0)
+
 ADDR = 'localhost'
 PORT = 33000
 BUFSIZ = 1024
@@ -101,15 +103,27 @@ clients = {}
 # mapping socket and chat name
 names = {}
 hosts_keys = {}
-cert = RSA()
+socket = None
+stop = None
+cert = None
 
 if __name__ == "__main__":
-	with socket(AF_INET, SOCK_STREAM) as sock:
-		sock.bind((ADDR, PORT))
-		sock.listen(5)
+	cert = RSA()
+	stop = threading.Event()
+
+	with _socket(AF_INET, SOCK_STREAM) as socket:
+		socket.bind((ADDR, PORT))
+		socket.listen(5)
 
 		print("Waiting for connection...")
-		accept_thread = Thread(target=accept_connections, args=(sock,))
+		accept_thread = threading.Thread(target=accept_connections, args=(socket,))
 		accept_thread.start()
-		accept_thread.join()
+		
+		try:
+			while accept_thread.is_alive():
+				sleep(1)
+		except KeyboardInterrupt:
+			stop.set()
+			socket.close()
+
 
