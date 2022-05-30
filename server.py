@@ -104,12 +104,12 @@ hosts_keys = {}
 cert = RSA()
 
 if __name__ == "__main__":
-	with socket(AF_INET, SOCK_STREAM) as s:
-		socket.bind((ADDR, PORT))
-		socket.listen(5)
+	with socket(AF_INET, SOCK_STREAM) as sock:
+		sock.bind((ADDR, PORT))
+		sock.listen(5)
 
 		print("Waiting for connection...")
-		accept_thread = Thread(target=accept_connections, args=(socket,))
+		accept_thread = Thread(target=accept_connections, args=(sock,))
 		accept_thread.start()
 		accept_thread.join()
 
